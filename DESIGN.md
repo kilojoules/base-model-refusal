@@ -82,6 +82,68 @@ measurement is not perturbed by BPE merges across the boundary.
 Generate-and-judge is retained as the **secondary** instrument, to confirm that RPS
 predicts behaviour that a human would call refusal.
 
+### A limitation of the cross-arm comparison, and why the raw components are stored
+
+RPS is a difference of two log-probabilities, both of which can be low. In the `document`
+arm neither a refusal opener nor a "Sure, here is" opener is a natural continuation of a
+reference manual, so the difference between them is taken between two unlikely strings
+and is correspondingly noisier than in the `chat` arm. Within an arm the comparison
+across model sizes is sound, because the openers are held fixed. Across arms it is
+weaker.
+
+Three things keep this honest. The per-opener log-probabilities of both sets are written
+to disk for every prompt, so the headline metric can be renormalised after the fact
+without re-running anything. The `chat`-minus-`document` gap is reported alongside the
+raw refusal log-probability in each arm, so a gap driven by the compliance term rather
+than the refusal term is visible. And the few-shot dose-response curve holds the frame
+fixed while varying only the number of demonstrations, which gives a within-frame
+estimate that does not depend on comparing arms at all.
+
+### Measured on 2026-10-01: RPS carries a large positive offset, so levels are not readable
+
+First run of the probe on Qwen2.5-0.5B base and Qwen2.5-7B-Instruct: RPS was positive on
+essentially every prompt, in every arm, for both models, including on benign prompts and
+including for a 0.5B base model with no safety training. The fraction of prompts with
+RPS above zero was 1.00 almost everywhere.
+
+That is not a finding about refusal. It is string-frequency bias. The refusal openers are
+formulaic, high-frequency English; the compliant openers are less idiomatic. A
+length-normalised mean log-probability rewards the formulaic string regardless of
+context, so the metric sits well above zero before any refusal tendency enters.
+
+Consequences, which the design already pointed at but which are now mandatory rather
+than advisory:
+
+- **The sign of RPS means nothing.** "Fraction of prompts with RPS > 0" must not be
+  reported as a refusal rate. It was in the first draft of the analysis; it is now
+  reported only as a diagnostic alongside the benign offset.
+- **Only differences are interpretable**: harmful minus benign, chat minus document,
+  harmful-demo minus benign-demo, model minus model within an arm.
+- `analyze.rps_offset_check` reports the benign-prompt offset per model and arm, so every
+  table can be read against its own baseline.
+
+The first run also showed the anchor behaving as intended: on the chat arm the instruct
+model's harmful-minus-benign sensitivity exceeded the 0.5B base model's by a wide margin,
+while the 0.5B base model showed essentially no sensitivity in the chat, transcript or
+document arms. The instrument separates; the levels just cannot be read raw.
+
+### A second confound found the same way: the benign control was not form-matched
+
+The 0.5B base model showed an apparently large positive harmful-minus-benign difference
+in the `raw` arm alone. HarmBench behaviours are imperatives ("write a tutorial
+that ..."); XSTest safe prompts are mostly questions. With no scaffold to normalise them,
+the `raw` arm compares two grammatical forms as much as two harm levels.
+
+Fix: XSTest's `contrast_*` prompts were added as a third split, `harmful_matched`. They
+are genuinely unsafe and matched by construction to their safe twins in surface form, so
+their difference isolates harm with form held approximately fixed. Reported quantities
+are now:
+
+- **harmful_matched minus benign** -- the clean harm-sensitivity estimate, paired by
+  XSTest type. This is the one to trust.
+- **harmful (HarmBench) minus benign** -- retained for severity and literature
+  comparability, but form-confounded and labelled as such.
+
 ## 4. The experimental axis that answers Q2: prompt-format arms
 
 Each behaviour is rendered four ways. The contrast between arms, not the level within
@@ -237,8 +299,9 @@ should be quoted.
 
 ## 8. Decision rules, pre-registered
 
-- RPS near zero and flat in size, in every arm: base Qwen has no refusal notion.
-  Negative result, worth writing up.
+- Harm sensitivity near zero and flat in size, in every arm: base Qwen has no
+  refusal notion. Negative result, worth writing up. Note this is a statement about
+  differences; raw RPS will be positive throughout and means nothing.
 - RPS rising with size in `chat` and `transcript` but flat and near the benign floor in
   `document`: refusal is **genre imitation**, and larger models imitate better. This is
   the most likely outcome.

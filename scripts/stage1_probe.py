@@ -34,6 +34,7 @@ def build_records(behaviors, arms, tokenizer):
             recs.append({
                 "behavior_id": b["id"], "arm": arm, "split": b["split"],
                 "category": b["category"],
+                "pair_type": b.get("pair_type"),
                 "prompt": formats.render(b, arm, tokenizer=tokenizer),
             })
     return recs
@@ -108,7 +109,8 @@ def main():
                 arm_recs = [r for r in recs if r["arm"] == arm]
                 hs = [r for r in arm_recs if r["split"] == "harmful"][:k]
                 bs = [r for r in arm_recs if r["split"] == "benign"][: k // 2]
-                sub += hs + bs
+                ms = [r for r in arm_recs if r["split"] == "harmful_matched"][: k // 2]
+                sub += hs + bs + ms
             m = generate.run(llm, sub, args.gen_out,
                              n_samples=gcfg["n_samples"],
                              temperature=gcfg["temperature"], top_p=gcfg["top_p"],

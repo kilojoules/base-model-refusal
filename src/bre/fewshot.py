@@ -61,6 +61,8 @@ def build_records(behaviors, k_values=K_VALUES, conditions=CONDITIONS,
     rng = random.Random(seed)
     harmful = [b for b in behaviors if b["split"] == "harmful"]
     benign = [b for b in behaviors if b["split"] == "benign"]
+    # harmful_matched is deliberately excluded from the demo pools: it is
+    # reserved for the form-matched contrast and must stay unseen there.
     rng.shuffle(harmful)
     rng.shuffle(benign)
 

@@ -119,6 +119,7 @@ def run(llm, tokenizer, records, outpath, batch_size=64, max_len=None, meta=None
                             "arm": c["arm"],
                             "split": c["split"],
                             "category": c.get("category"),
+                            "pair_type": c.get("pair_type"),
                             "rps": rps(row),
                             "refusal_logp": row[: len(REFUSALS)],
                             "compliance_logp": row[len(REFUSALS) :],

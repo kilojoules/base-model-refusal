@@ -40,50 +40,69 @@ def load_harmful(functional_categories=("standard",), limit=None):
     return out[:limit] if limit else out
 
 
-def load_benign(limit=250):
-    """XSTest safe split: benign prompts with superficially alarming surface form.
+def load_xstest(limit_safe=250, limit_contrast=200):
+    """XSTest, split into its safe prompts and their unsafe contrast twins.
 
-    This is the false-refusal floor. Without it, a non-answer rate cannot be
-    attributed to harm-sensitivity.
+    XSTest is built as matched pairs: every `contrast_X` type is a genuinely unsafe
+    prompt whose surface form mirrors the safe `X` prompts. That matching is why this
+    set matters here.
+
+    HarmBench behaviours are imperatives ("write a tutorial that ..."), while XSTest
+    safe prompts are mostly questions. Comparing those two directly conflates harm with
+    grammatical form, so a HarmBench-minus-XSTest-safe difference is not a clean
+    harm-sensitivity estimate. The within-XSTest contrast-minus-safe difference is,
+    because form is held approximately fixed by construction.
+
+    Returns (safe, contrast). `pair_type` lets the two be matched type by type.
     """
     from datasets import load_dataset
 
-    ds = load_dataset("natolambert/xstest-v2-copy", "default")
-    frames = []
-    for name in ds:
-        frames.extend(dict(r, _split=name) for r in ds[name])
-    safe = [r for r in frames if "contrast" not in str(r.get("type", "")).lower()]
-    # XSTest marks genuinely-unsafe contrast prompts; keep only the safe ones.
-    safe = [r for r in safe if str(r.get("label", "safe")).lower() in ("safe", "")]
-    out = []
-    for i, r in enumerate(safe):
-        text = (r.get("prompt") or r.get("question") or "").strip()
+    ds = load_dataset("natolambert/xstest-v2-copy", split="prompts")
+    safe, contrast = [], []
+    for r in ds:
+        typ = str(r["type"])
+        text = (r.get("prompt") or "").strip()
         if not text:
             continue
-        out.append(
-            {
-                "id": f"xstest_safe_{i:04d}",
-                "text": text,
-                "category": str(r.get("type", "unknown")),
-                "context": None,
-                "split": "benign",
-            }
-        )
-    out.sort(key=lambda d: d["id"])
-    return out[:limit] if limit else out
+        is_contrast = typ.startswith("contrast_") or typ == "contrast_discr"
+        rec = {
+            "id": f"xstest_{typ}_{r['id']}",
+            "text": text,
+            "category": typ,
+            "pair_type": typ.replace("contrast_", "", 1) if is_contrast else typ,
+            "context": None,
+            "split": "harmful_matched" if is_contrast else "benign",
+        }
+        (contrast if is_contrast else safe).append(rec)
+    safe.sort(key=lambda d: d["id"])
+    contrast.sort(key=lambda d: d["id"])
+    return safe[:limit_safe], contrast[:limit_contrast]
 
 
-def build(outdir="data", harmful_kw=None, benign_limit=250):
+def load_benign(limit=250):
+    """Backwards-compatible alias for the safe split alone."""
+    return load_xstest(limit_safe=limit)[0]
+
+
+def build(outdir="data", harmful_kw=None, benign_limit=250, contrast_limit=200):
+    """Write all three prompt sets.
+
+    harmful         - HarmBench standard behaviours; severity-matched to the literature.
+    benign          - XSTest safe; the false-refusal floor.
+    harmful_matched - XSTest unsafe contrast twins; form-matched to `benign`, which
+                      makes contrast-minus-benign the clean harm-sensitivity estimate.
+    """
     outdir = pathlib.Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     harmful = load_harmful(**(harmful_kw or {}))
-    benign = load_benign(limit=benign_limit)
+    benign, contrast = load_xstest(benign_limit, contrast_limit)
     path = outdir / "prompts.jsonl"
     with path.open("w") as fh:
-        for rec in harmful + benign:
+        for rec in harmful + benign + contrast:
             fh.write(json.dumps(rec) + "\n")
     # Counts only -- deliberately no content echoed.
-    return {"harmful": len(harmful), "benign": len(benign), "path": str(path)}
+    return {"harmful": len(harmful), "benign": len(benign),
+            "harmful_matched": len(contrast), "path": str(path)}
 
 
 def read(path="data/prompts.jsonl"):

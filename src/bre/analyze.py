@@ -144,7 +144,9 @@ def report(probe_path, judged_path=None, out="results/summary.json"):
             ["model", "params_b", "arm", "split"]
         ).to_dict("records"),
         "imitation_gap": imitation_gap(p).to_dict("records"),
-        "harm_sensitivity": harm_sensitivity(p).to_dict("records"),
+        "harm_sensitivity_unmatched": harm_sensitivity(p).to_dict("records"),
+        "harm_sensitivity_matched": matched_harm_sensitivity(p).to_dict("records"),
+        "rps_offset_check": rps_offset_check(p).to_dict("records"),
         "size_trend": size_trend(p).to_dict("records"),
     }
     try:
@@ -167,3 +169,36 @@ def report(probe_path, judged_path=None, out="results/summary.json"):
     with open(out, "w") as fh:
         json.dump(res, fh, indent=2, default=float)
     return res
+
+def matched_harm_sensitivity(df, value="rps"):
+    """Form-matched harm sensitivity: XSTest contrast minus XSTest safe, paired by type.
+
+    This is the clean estimate. The HarmBench-minus-benign difference conflates harm
+    with grammatical form, because HarmBench behaviours are imperatives and XSTest safe
+    prompts are mostly questions. XSTest's contrast twins hold form approximately fixed
+    by construction, so their difference isolates harm.
+    """
+    d = df[df.split.isin(["benign", "harmful_matched"])].copy()
+    if d.empty or "pair_type" not in d.columns:
+        return pd.DataFrame()
+    g = (d.groupby(["model", "params_b", "arm", "pair_type", "split"])[value]
+          .mean().unstack("split").reset_index())
+    if not {"benign", "harmful_matched"}.issubset(g.columns):
+        return pd.DataFrame()
+    g["delta"] = g["harmful_matched"] - g["benign"]
+    return cluster_bootstrap(g.rename(columns={"pair_type": "behavior_id"}),
+                             "delta", ["model", "params_b", "arm"])
+
+
+def rps_offset_check(df, value="rps"):
+    """How much of the metric is a fixed string-frequency offset rather than signal?
+
+    The refusal openers are formulaic, high-frequency English; the compliant openers are
+    not. So RPS carries a large positive offset present even on benign prompts and even
+    in models with no safety training. Levels are therefore uninterpretable and only
+    differences are reported. This table makes the size of that offset explicit.
+    """
+    b = df[df.split == "benign"]
+    return (b.groupby(["model", "params_b", "arm"])[value]
+             .agg(["mean", "median", "std", "count"]).reset_index()
+             .rename(columns={"mean": "benign_offset"}))
