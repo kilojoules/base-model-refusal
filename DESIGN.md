@@ -48,6 +48,71 @@ reward-hacking surface once an attacker is in the loop.
 
 *Fix:* see below. Make the primary instrument logit-level.
 
+## 2b. The judge, and what validating it revealed
+
+The compliance judge is no longer the 13B fine-tuned HarmBench classifier. It is
+Llama-3.1-70B-Instruct, scored against the official HarmBench rubric used verbatim: only
+the Llama-2 chat wrapper around the rubric is replaced with this model's own template.
+
+Three choices worth recording.
+
+**A different model family from the subjects.** Qwen2.5-72B-Instruct is the strongest
+judge available here and is deliberately not used. The subjects are Qwen; a judge sharing
+their tokenizer, pretraining corpus and priors about plausible continuations is biased
+toward agreeing with them, and the conclusion is specifically about Qwen.
+
+**Llama 3.1, not 3.3.** Llama-3.3-70B-Instruct returns 403 on every file including weight
+shards for this account. This is a per-model license gate, not a token problem.
+
+**INT4, for KV cache rather than download size.** At bf16, 70B weights occupy ~141GB of
+the 160GB available, leaving ~11GB of cache and capping concurrency near 16 sequences.
+INT4 leaves ~110GB. Measured throughput is still only ~3,200 input tokens/s, because each
+row is a ~600-token rubric prompt answered in four tokens, so the phase is almost pure
+prefill. `scripts/judge_precision_check.py` re-judges a subsample at bf16 and reports
+agreement, so the quantization choice carries a number rather than an assurance.
+
+### The judge is gated before use
+
+Standard HarmBench judging only ever sees instruction-tuned output, where the
+non-compliant class is nearly all refusal. Here the non-compliant class is dominated by
+repetition, truncation and drift into an unrelated document. A judge that files that under
+refusal reports the 0.5B model as maximally refusing and inverts the study. So the judge is
+gated on a synthetic set whose labels are fixed by construction, and the gate thresholds
+are on exactly that error.
+
+Final gate, 24 cases per class: 0.931 exact accuracy; explicit refusal, soft deflection
+and meta-commentary each 24/24; degenerate text called refusal 8.3% of the time; refusal
+called degenerate 0%.
+
+### Two findings from building the gate
+
+**A validation set can fail while the judge is right.** The first version supplied
+FULL_COMPLIANCE examples as hand-written generic boilerplate. The judge labelled almost
+all of them off-topic and scored every one non-compliant, and that was correct: filler
+which never addresses the specific request genuinely is off-topic and genuinely is not an
+instance of the behaviour. Replacing them with real instruct-model answers to benign
+prompts, whose label comes from provenance, moved accuracy from 0.764 to 0.910.
+
+**The compliance axis cannot be validated this way at all.** The rubric asks whether a
+generation instantiates a *harmful* behaviour, so a benign answer to a benign prompt is
+definitionally non-compliant, and no choice of benign example fixes this. Genuine
+positives would require authoring harmful completions. Compliance validation therefore
+comes from a different direction: agreement with the original 13B classifier on real
+generations, which is obtainable without anyone writing harmful content. That is why the
+anchor pass is retained, and it is the reason the anchor is worth its half hour beyond
+mere comparability with published numbers.
+
+### Residual judge caveats, for any write-up
+
+- Hedged-but-genuine attempts are labelled soft deflection about 29% of the time. Since
+  deflection counts toward the refusal bit, refusal rates may run slightly high wherever
+  base models hedge. A tie-breaker instruction reduced this from 33%; the remainder is
+  genuine ambiguity in the example texts and is reported rather than tuned away.
+- 8% of degenerate rows are scored compliant by the rubric.
+- Both stage-1 passes share one judge, so the compliance and stance axes are not
+  independent. `scripts/judge_crosscheck.py` re-labels a subsample with a Qwen judge and
+  reports agreement on the binary refusal question the conclusions rest on.
+
 ## 3. Primary instrument: forced-choice refusal preference (judge-free)
 
 These are open-weight models we control, so we do not have to sample and classify. We
