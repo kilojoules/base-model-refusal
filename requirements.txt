@@ -1,0 +1,14 @@
+# Verified working on runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
+# with NVIDIA driver 590.48.01 on A100-SXM4-80GB.
+# pip resolves torch to 2.13.0+cu130 and vllm to 0.30.0; the driver supports cu130 at
+# runtime, but the image has no nvcc matching it, so flashinfer's JIT sampling kernels
+# cannot build. Set VLLM_USE_FLASHINFER_SAMPLER=0 and vLLM uses its native sampler.
+vllm>=0.6.3
+transformers>=4.45
+datasets
+pandas
+numpy
+scipy
+pyyaml
+statsmodels
+hf_transfer

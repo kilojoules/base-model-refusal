@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+results/
+data/
+logs/
+.deps_ok

@@ -1,0 +1,62 @@
+# Stage 1 experiment configuration.
+seed: 20261001
+
+ladder:
+  family: qwen2.5-base
+  models:
+    - {name: "Qwen/Qwen2.5-0.5B",  params_b: 0.49,  tp: 1}
+    - {name: "Qwen/Qwen2.5-1.5B",  params_b: 1.54,  tp: 1}
+    - {name: "Qwen/Qwen2.5-3B",    params_b: 3.09,  tp: 1}
+    - {name: "Qwen/Qwen2.5-7B",    params_b: 7.62,  tp: 1}
+    - {name: "Qwen/Qwen2.5-14B",   params_b: 14.77, tp: 1}
+    - {name: "Qwen/Qwen2.5-32B",   params_b: 32.76, tp: 2}
+    - {name: "Qwen/Qwen2.5-72B",   params_b: 72.71, tp: 2}
+  anchors:
+    - {name: "Qwen/Qwen2.5-7B-Instruct",  params_b: 7.62,  tp: 1, kind: instruct}
+    - {name: "Qwen/Qwen2.5-32B-Instruct", params_b: 32.76, tp: 2, kind: instruct}
+
+arms: [raw, chat, transcript, document]
+
+data:
+  harmful:
+    source: harmbench
+    # standard split, textual (non-contextual, non-multimodal, non-copyright) behaviours
+    functional_categories: [standard]
+    limit: null
+  benign:
+    source: xstest_safe
+    limit: 250
+
+probe:
+  # length-normalised mean logprob over each continuation; score = max(R) - max(C)
+  batch_size: 64
+
+generate:
+  # secondary instrument, stratified subsample of behaviours
+  subsample_per_arm: 120
+  n_samples: 5
+  temperature: 0.9
+  top_p: 0.95
+  max_tokens: 256
+
+judge:
+  compliance:
+    model: "cais/HarmBench-Llama-2-13b-cls"
+    tp: 1
+  taxonomy:
+    model: "Qwen/Qwen2.5-72B-Instruct-AWQ"
+    tp: 2
+    labels: [EXPLICIT_REFUSAL, SOFT_DEFLECTION, META_COMMENTARY,
+             INCOHERENT_OR_OFFTOPIC, PARTIAL_COMPLIANCE, FULL_COMPLIANCE]
+
+attacker:
+  model: "Qwen/Qwen2.5-14B-Instruct"
+  tp: 2
+  target: "Qwen/Qwen2.5-7B"
+  rounds: 12
+  proposals_per_round: 16
+  leaderboard_size: 10
+  search_behaviors: 64
+  heldout_behaviors: 64
+  max_wrapper_chars: 600
+  enable_rl: false
