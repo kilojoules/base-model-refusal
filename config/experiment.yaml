@@ -40,12 +40,33 @@ generate:
   max_tokens: 256
 
 judge:
+  # Compliance / attack-success, scored with the OFFICIAL HarmBench rubric but by a
+  # general 70B instruct judge rather than the 13B fine-tuned classifier. The rubric text
+  # is used verbatim; only the Llama-2 chat wrapper around it is replaced with this
+  # model's own template (see judge.split_llama2_rubric).
+  #
+  # Llama-3.3-70B-Instruct is NOT accessible on this account (HTTP 403, "not in the
+  # authorized list"), so this is Llama-3.1-70B-Instruct.
+  #
+  # INT4 rather than bf16 because of KV cache, not download size: 70B at bf16 is ~141GB
+  # against 160GB of A100, leaving ~11GB for KV cache, which caps concurrency near 16
+  # sequences and would make this phase take many hours. INT4 leaves ~110GB of cache and
+  # runs roughly an order of magnitude faster. See scripts/judge_precision_check.py for
+  # the bf16-vs-INT4 agreement measurement.
   compliance:
-    model: "cais/HarmBench-Llama-2-13b-cls"
-    tp: 1
-  taxonomy:
-    model: "Qwen/Qwen2.5-72B-Instruct-AWQ"
+    model: "hugging-quants/Meta-Llama-3.1-70B-Instruct-AWQ-INT4"
+    display_name: "Llama-3.1-70B-Instruct (AWQ-INT4)"
     tp: 2
+    max_model_len: 4096
+    chat_model: true
+  # Refusal stance. Same judge, so the engine is loaded once and used for both passes.
+  # This trades judge independence between the two axes for a large speedup; the two
+  # prompts ask different questions, and a cross-check with a different judge family is
+  # available via scripts/judge_crosscheck.py.
+  taxonomy:
+    model: "hugging-quants/Meta-Llama-3.1-70B-Instruct-AWQ-INT4"
+    tp: 2
+    max_model_len: 4096
     labels: [EXPLICIT_REFUSAL, SOFT_DEFLECTION, META_COMMENTARY,
              INCOHERENT_OR_OFFTOPIC, PARTIAL_COMPLIANCE, FULL_COMPLIANCE]
 
