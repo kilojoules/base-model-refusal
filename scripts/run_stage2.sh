@@ -44,14 +44,34 @@ export PROPOSER_URL=http://127.0.0.1:8000/v1
 export PROPOSER_MODEL="$PROPOSER"
 export PROPOSER_API_KEY=none
 
+# vLLM can abort during CUDA teardown ("terminate called without an active
+# exception") AFTER a search has finished and written its results. Under set -e that
+# non-zero exit killed the whole script, discarding the two searches that had not run
+# yet -- including the positive control, without which the measurement is
+# uninterpretable. So judge success by whether the summary file was written, not by the
+# exit code. Already-complete searches are skipped, making the script resumable.
 run_search () {  # target, mode, label
+  local out="results/attack/$(basename "$1")_$2"
+  if [ -s "$out/summary.json" ]; then
+    echo "[stage2] $3 already complete ($out/summary.json); skipping"
+    return 0
+  fi
   echo ""
   echo "=============================================================="
   echo "[stage2] $3: target=$1 mode=$2 runs=$RUNS rounds=$ROUNDS"
   echo "=============================================================="
+  set +e
   CUDA_VISIBLE_DEVICES=0 python scripts/stage2_attack.py \
     --target "$1" --mode "$2" --runs "$RUNS" --rounds "$ROUNDS" --tp 1 \
     2>&1 | tee -a "logs/stage2_$3.log"
+  local rc=${PIPESTATUS[0]}
+  set -e
+  if [ -s "$out/summary.json" ]; then
+    [ "$rc" -ne 0 ] && echo "[stage2] $3 exited $rc but results are complete (teardown crash); continuing"
+    return 0
+  fi
+  echo "[stage2] $3 FAILED with no summary written (exit $rc)"
+  return 1
 }
 
 run_search "$TARGET"  strict measurement
