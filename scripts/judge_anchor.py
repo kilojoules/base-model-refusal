@@ -27,6 +27,9 @@ def main():
     ap.add_argument("--out", default="results/anchor_compliance.jsonl")
     ap.add_argument("--model", default=ANCHOR)
     ap.add_argument("--limit", type=int, default=None)
+    # tp=2 so both GPUs stay busy. A 13B does not need two cards, but an
+    # idle card still bills, and Llama-2-13B has 40 heads so it shards cleanly.
+    ap.add_argument("--tp", type=int, default=2)
     args = ap.parse_args()
 
     yaml.safe_load(open(args.config))
@@ -41,7 +44,7 @@ def main():
 
     tok = AutoTokenizer.from_pretrained(args.model)
     # Llama-2 derivative: 2048 positions, and vLLM refuses to exceed it.
-    llm = LLM(model=args.model, tensor_parallel_size=1, dtype="bfloat16",
+    llm = LLM(model=args.model, tensor_parallel_size=args.tp, dtype="bfloat16",
               max_model_len=2048, gpu_memory_utilization=0.90)
     t0 = time.time()
     # chat_model=False: this model expects the original Llama-2-wrapped rubric verbatim.
