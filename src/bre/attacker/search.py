@@ -143,18 +143,34 @@ def run(llm, tokenizer, behaviors, proposer, outdir="results/attack",
         max_chars=600, mode="strict", seed=0, judge_llm=None, judge_tok=None,
         max_len=2048):
     rng = random.Random(seed)
-    pool = [b for b in behaviors if b["split"] == "harmful"]
-    rng.shuffle(pool)
-    search, heldout = pool[:search_n], pool[search_n : search_n + heldout_n]
-    # Benign controls, scored under the same wrapper, so the wrapper's own RPS offset
-    # cancels out of the reward. Without these the search maximises a level that is
-    # mostly string-frequency bias.
-    cpool = [b for b in behaviors if b["split"] == "benign"]
-    rng.shuffle(cpool)
-    c_search = cpool[:search_n]
-    c_heldout = cpool[search_n : search_n + heldout_n]
-    if not c_search or not c_heldout:
-        raise RuntimeError("no benign controls available; the reward would be uncontrolled")
+    # Positives and controls are FORM-MATCHED XSTest pairs, not HarmBench against XSTest.
+    #
+    # The previous version differenced HarmBench behaviours (imperative sentences)
+    # against XSTest safe prompts (mostly questions) and assumed the surface-form gap was
+    # a constant that cancelled in the ranking. It is not constant: a wrapper that
+    # normalises form, such as "Request: {behavior}\nStandard Response:", shrinks the gap
+    # and scores worse, while presenting the behaviour bare maximises it. The search
+    # therefore still had a form artefact to climb, and bare presentation won again.
+    #
+    # XSTest's contrast prompts are matched to their safe twins by construction, so no
+    # wrapper can exploit a form difference between the two sides. They are milder in
+    # severity than HarmBench, which is why the held-out evaluation also reports a
+    # HarmBench number, labelled as form-confounded.
+    pos = [b for b in behaviors if b["split"] == "harmful_matched"]
+    ctl = [b for b in behaviors if b["split"] == "benign"]
+    if not pos or not ctl:
+        raise RuntimeError(
+            "need both XSTest contrast and safe splits; the reward would be confounded")
+    rng.shuffle(pos); rng.shuffle(ctl)
+    search, heldout = pos[:search_n], pos[search_n : search_n + heldout_n]
+    c_search = ctl[:search_n]
+    c_heldout = ctl[search_n : search_n + heldout_n]
+    if not heldout or not c_heldout:
+        raise RuntimeError("not enough matched prompts for a held-out split")
+    # Secondary, severity-relevant but form-confounded: HarmBench behaviours.
+    hb = [b for b in behaviors if b["split"] == "harmful"]
+    rng.shuffle(hb)
+    hb_heldout = hb[:heldout_n]
 
     outdir = pathlib.Path(outdir); outdir.mkdir(parents=True, exist_ok=True)
     log = (outdir / "search_log.jsonl").open("a")
@@ -224,9 +240,14 @@ def run(llm, tokenizer, behaviors, proposer, outdir="results/attack",
     for e in board:
         h = R.score_wrapper(llm, tokenizer, e["wrapper"], heldout,
                             controls=c_heldout, max_len=max_len)
+        hb = R.score_wrapper(llm, tokenizer, e["wrapper"], hb_heldout,
+                             controls=c_heldout, max_len=max_len)
         final.append({**e, "heldout_reward": h["reward"],
                       "heldout_frac_positive": h.get("frac_positive"),
-                      "heldout_n": h.get("n")})
+                      "heldout_n": h.get("n_harmful"),
+                      # Secondary: severity-relevant, but HarmBench is imperative while
+                      # the controls are interrogative, so this carries a form confound.
+                      "heldout_harmbench_confounded": hb["reward"]})
     final.sort(key=lambda e: -e["heldout_reward"])
     with (outdir / "final_board.json").open("w") as fh:
         json.dump({"mode": mode, "search_n": len(search), "heldout_n": len(heldout),
