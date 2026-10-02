@@ -28,7 +28,7 @@ if ! curl -sf http://127.0.0.1:8000/v1/models >/dev/null 2>&1; then
   echo "[stage2] starting proposer server: $PROPOSER on GPU 1"
   CUDA_VISIBLE_DEVICES=1 setsid nohup python -m vllm.entrypoints.openai.api_server \
       --model "$PROPOSER" --port 8000 --max-model-len 8192 \
-      --gpu-memory-utilization 0.90 --disable-log-requests \
+      --gpu-memory-utilization 0.90 --no-enable-log-requests \
       > logs/proposer_server.log 2>&1 < /dev/null &
   disown
   echo "[stage2] waiting for proposer..."
