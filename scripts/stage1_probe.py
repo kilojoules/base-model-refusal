@@ -125,7 +125,13 @@ def main():
         except Exception: pass
 
         if args.purge_cache:
+            # Removing the models--* directory is not enough on its own: newer
+            # huggingface_hub versions keep weights in a shared, sharded blob store and
+            # the model directory holds only links into it. Drop the directory, then reap
+            # the blobs it was the last referrer to. Nothing is downloading at this point
+            # in the loop, so no age guard is needed here.
             import shutil
+            import subprocess
             slug = "models--" + name.replace("/", "--")
             cache = pathlib.Path(os.environ.get("HF_HOME", "~/.cache/huggingface"))
             for root in (cache / "hub", cache):
@@ -134,6 +140,16 @@ def main():
                     shutil.rmtree(d, ignore_errors=True)
                     print(f"[purge] removed {d}", flush=True)
                     break
+            reaper = pathlib.Path(__file__).with_name("reap_orphan_blobs.py")
+            if reaper.exists():
+                try:
+                    out = subprocess.run(
+                        [sys.executable, str(reaper), "--min-age-min", "0"],
+                        capture_output=True, text=True, timeout=600)
+                    for line in out.stdout.strip().splitlines():
+                        print(line, flush=True)
+                except Exception as e:
+                    print(f"[purge] reaper failed: {e}", flush=True)
         try:
             import shutil as _sh
             free = _sh.disk_usage("/workspace").free / 1e9
