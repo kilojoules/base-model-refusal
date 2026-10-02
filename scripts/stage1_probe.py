@@ -52,6 +52,8 @@ def main():
     ap.add_argument("--only", default=None, help="substring filter on model name")
     ap.add_argument("--include-anchors", action="store_true", default=True)
     ap.add_argument("--max-model-len", type=int, default=2048)
+    ap.add_argument("--purge-cache", action="store_true",
+                    help="delete each model's weights after probing it; the run is\n                          resumable so weights are never needed twice")
     ap.add_argument("--eager", action="store_true",
                     help="disable CUDA graph capture (slower, more robust)")
     args = ap.parse_args()
@@ -121,6 +123,23 @@ def main():
         del llm; gc.collect()
         try: torch.cuda.empty_cache()
         except Exception: pass
+
+        if args.purge_cache:
+            import shutil
+            slug = "models--" + name.replace("/", "--")
+            cache = pathlib.Path(os.environ.get("HF_HOME", "~/.cache/huggingface"))
+            for root in (cache / "hub", cache):
+                d = root / slug
+                if d.exists():
+                    shutil.rmtree(d, ignore_errors=True)
+                    print(f"[purge] removed {d}", flush=True)
+                    break
+        try:
+            import shutil as _sh
+            free = _sh.disk_usage("/workspace").free / 1e9
+            print(f"[disk] {free:.0f}GB free", flush=True)
+        except Exception:
+            pass
         print(f"[done] {name} total {time.time()-t0:.0f}s", flush=True)
 
 
