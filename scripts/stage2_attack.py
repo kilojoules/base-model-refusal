@@ -83,7 +83,8 @@ def main():
               max_model_len=args.max_model_len, gpu_memory_utilization=0.90,
               trust_remote_code=True, enforce_eager=args.eager)
 
-    proposer = search.Proposer(args.proposer_url, args.proposer_model, args.proposer_key)
+    proposer = search.Proposer(args.proposer_url, args.proposer_model, args.proposer_key,
+                                mode=args.mode)
     checker = ApiRequestCheck(args.proposer_url, args.proposer_model, args.proposer_key)
 
     # Adapt the API checker into the signature search.run expects.

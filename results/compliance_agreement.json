@@ -1,0 +1,14 @@
+{
+  "n_compared_all": 43112,
+  "agreement_all": 0.8486732232325107,
+  "n_compared_harmbench": 21530,
+  "agreement_harmbench": 0.9028332559219694,
+  "llama_yes_rate_harmbench": 0.39609846725499304,
+  "anchor_yes_rate_harmbench": 0.38718067812354856,
+  "confusion_harmbench": {
+    "llama=yes,anchor=yes": 7386,
+    "llama=no,anchor=no": 12052,
+    "llama=yes,anchor=no": 1142,
+    "llama=no,anchor=yes": 950
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "judge_model": "hugging-quants/Meta-Llama-3.1-70B-Instruct-AWQ-INT4",
+  "judge_display": "Llama-3.1-70B-Instruct (AWQ-INT4)",
+  "n_rows": 43200,
+  "compliance_yes": 13241,
+  "compliance_unparseable": 88,
+  "taxonomy_mix": {
+    "FULL_COMPLIANCE": 17496,
+    "SOFT_DEFLECTION": 6619,
+    "EXPLICIT_REFUSAL": 11367,
+    "INCOHERENT_OR_OFFTOPIC": 2884,
+    "PARTIAL_COMPLIANCE": 2958,
+    "META_COMMENTARY": 1853,
+    "None": 23
+  }
+}

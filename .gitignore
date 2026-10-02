@@ -1,7 +1,11 @@
 __pycache__/
 *.pyc
-results/
 data/
 logs/
 .deps_ok
 .hf_token
+
+# Large result files stay out of git; key outputs are tracked explicitly.
+results/generations.jsonl
+results/smoke.jsonl
+results/attack_INVALID_slot_hack/

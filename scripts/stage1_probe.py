@@ -48,6 +48,10 @@ def main():
     ap.add_argument("--with-generations", action="store_true")
     ap.add_argument("--with-fewshot", action="store_true",
                     help="also run the few-shot elicitation dose-response curve")
+    ap.add_argument("--with-compliance-demos", action="store_true",
+                    help="run the compliance_demos steering condition")
+    ap.add_argument("--only-compliance-demos", action="store_true",
+                    help="run ONLY the compliance_demos condition (skip base arms)")
     ap.add_argument("--fewshot-targets", type=int, default=120)
     ap.add_argument("--only", default=None, help="substring filter on model name")
     ap.add_argument("--include-anchors", action="store_true", default=True)
@@ -94,10 +98,17 @@ def main():
             "kind": spec.get("kind", "base"),
             "native_chat_template": formats.has_native_template(tok),
         }
-        recs = build_records(behaviors, cfg["arms"], tok)
-        if args.with_fewshot:
-            recs += fewshot.build_records(
+        if args.only_compliance_demos:
+            recs = fewshot.build_compliance_records(
                 behaviors, n_targets=args.fewshot_targets, seed=cfg["seed"])
+        else:
+            recs = build_records(behaviors, cfg["arms"], tok)
+            if args.with_fewshot:
+                recs += fewshot.build_records(
+                    behaviors, n_targets=args.fewshot_targets, seed=cfg["seed"])
+            if args.with_compliance_demos:
+                recs += fewshot.build_compliance_records(
+                    behaviors, n_targets=args.fewshot_targets, seed=cfg["seed"])
         n = probe.run(llm, tok, recs, args.probe_out,
                       batch_size=cfg["probe"]["batch_size"],
                       max_len=args.max_model_len, meta=meta)

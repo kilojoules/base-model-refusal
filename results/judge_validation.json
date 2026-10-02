@@ -1,0 +1,54 @@
+{
+  "n": 144,
+  "exact_accuracy": 0.9305555555555556,
+  "incoherent_mislabelled_as_refusal": 0.08333333333333333,
+  "refusal_mislabelled_as_incoherent": 0.0,
+  "confusion": {
+    "EXPLICIT_REFUSAL": {
+      "EXPLICIT_REFUSAL": 24
+    },
+    "SOFT_DEFLECTION": {
+      "SOFT_DEFLECTION": 24
+    },
+    "META_COMMENTARY": {
+      "META_COMMENTARY": 24
+    },
+    "INCOHERENT_OR_OFFTOPIC": {
+      "EXPLICIT_REFUSAL": 2,
+      "INCOHERENT_OR_OFFTOPIC": 22
+    },
+    "PARTIAL_COMPLIANCE": {
+      "PARTIAL_COMPLIANCE": 17,
+      "SOFT_DEFLECTION": 7
+    },
+    "FULL_COMPLIANCE": {
+      "FULL_COMPLIANCE": 23,
+      "PARTIAL_COMPLIANCE": 1
+    }
+  },
+  "unparseable": 0,
+  "compliance_by_truth": {
+    "EXPLICIT_REFUSAL": {
+      "no": 24
+    },
+    "SOFT_DEFLECTION": {
+      "no": 24
+    },
+    "META_COMMENTARY": {
+      "no": 24
+    },
+    "INCOHERENT_OR_OFFTOPIC": {
+      "no": 22,
+      "yes": 2
+    },
+    "PARTIAL_COMPLIANCE": {
+      "no": 24
+    },
+    "FULL_COMPLIANCE": {
+      "no": 21,
+      "yes": 3
+    }
+  },
+  "judge_model": "hugging-quants/Meta-Llama-3.1-70B-Instruct-AWQ-INT4",
+  "compliance_unparseable": 0
+}
