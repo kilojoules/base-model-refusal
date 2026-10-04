@@ -270,7 +270,7 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(
-        args.model, dtype=torch.bfloat16,
+        args.model, torch_dtype=torch.bfloat16,
         trust_remote_code=True,
     ).cuda()
     model.eval()
@@ -335,7 +335,7 @@ def main():
     print(f"\n[judge] loading {args.judge_model}", flush=True)
     judge_tok = AutoTokenizer.from_pretrained(args.judge_model, trust_remote_code=True)
     judge_model = AutoModelForCausalLM.from_pretrained(
-        args.judge_model, dtype=torch.bfloat16,
+        args.judge_model, torch_dtype=torch.bfloat16,
         trust_remote_code=True,
     ).cuda()
     judge_model.eval()
