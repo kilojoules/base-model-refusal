@@ -1,0 +1,12 @@
+{"model": "Qwen/Qwen2.5-7B-Instruct", "layer": 0, "harm_direction_norm": 0.8408337235450745}
+{"model": "Qwen/Qwen2.5-7B-Instruct", "layer": 4, "harm_direction_norm": 3.603492021560669}
+{"model": "Qwen/Qwen2.5-7B-Instruct", "layer": 8, "harm_direction_norm": 7.740333080291748}
+{"model": "Qwen/Qwen2.5-7B-Instruct", "layer": 12, "harm_direction_norm": 10.478799819946289}
+{"model": "Qwen/Qwen2.5-7B-Instruct", "layer": 14, "harm_direction_norm": 19.286157608032227}
+{"model": "Qwen/Qwen2.5-7B-Instruct", "layer": 16, "harm_direction_norm": 24.3559513092041}
+{"model": "Qwen/Qwen2.5-7B-Instruct", "layer": 18, "harm_direction_norm": 37.25995635986328}
+{"model": "Qwen/Qwen2.5-7B-Instruct", "layer": 20, "harm_direction_norm": 70.4745101928711}
+{"model": "Qwen/Qwen2.5-7B-Instruct", "layer": 22, "harm_direction_norm": 108.15318298339844}
+{"model": "Qwen/Qwen2.5-7B-Instruct", "layer": 24, "harm_direction_norm": 149.2902374267578}
+{"model": "Qwen/Qwen2.5-7B-Instruct", "layer": 26, "harm_direction_norm": 209.08212280273438}
+{"model": "Qwen/Qwen2.5-7B-Instruct", "layer": 27, "harm_direction_norm": 251.8632049560547}
