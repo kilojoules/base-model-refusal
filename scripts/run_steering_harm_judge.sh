@@ -6,6 +6,7 @@ export HF_HOME=/workspace/hf PYTHONPATH=src
 export VLLM_USE_FLASHINFER_SAMPLER=0
 
 mkdir -p results logs
+pip install -q accelerate 2>/dev/null
 
 # Clear previous results
 rm -f results/steering_harm_judge.jsonl results/steering_harm_judge_transcripts.jsonl \

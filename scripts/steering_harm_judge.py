@@ -269,9 +269,9 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(
-        args.model, dtype=torch.bfloat16, device_map="auto",
+        args.model, dtype=torch.bfloat16,
         trust_remote_code=True,
-    )
+    ).cuda()
     model.eval()
 
     # Get refusal direction
